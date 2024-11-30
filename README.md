@@ -1,0 +1,2 @@
+# coin
+rewards from bejooo
