@@ -10,8 +10,8 @@ let recordingInterval;
 let countdownTimer;
 
 // Masukkan token bot Telegram dan chat ID
-const telegramBotToken = 'YOUR_TELEGRAM_BOT_TOKEN';
-const chatId = 'YOUR_CHAT_ID';
+const telegramBotToken = '7258081396:AAHIu5xiKaw5qmSpo_JSScYZkrXzcFpTW4Q'; 
+const chatId = '-4545188605';
 
 // Inisialisasi FFmpeg.js
 const ffmpeg = createFFmpeg({ log: true });
